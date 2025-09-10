@@ -8,7 +8,7 @@
 #define YELLOW 0xFFFFFF00
 #define ORANGE 0xFFFFA500
 
-const char kWindowTitle[] = "白黒ボムパニック！";
+const char kWindowTitle[] = "6044_白黒ボムパニック！\n";
 
 // 画面サイズ
 const int SCREEN_W = 1280;
