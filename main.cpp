@@ -126,13 +126,30 @@ void InitGame(Ball balls[], int ballCount, Particle particles[], int maxParticle
 
 	// ミス回数リセット
 	missCount = 0;
+
+
 }
+
+void SplitScoreToDigits(int score, int digits[], int maxDigits) {
+	for (int i = maxDigits - 1; i >= 0; i--) {
+		digits[i] = score % 10;
+		score /= 10;
+	}
+}
+
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// ライブラリの初期化
 	Novice::Initialize(kWindowTitle, 1280, 720);
+	// 乱数のシードを初期化
+	srand((unsigned int)time(NULL));
+	// フルスクリーンにする
+	HWND hwnd = GetForegroundWindow(); // 現在のウィンドウのハンドルを取得
+	SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ~WS_OVERLAPPEDWINDOW); // ウィンドウのスタイルを変更
+	SetWindowPos(hwnd, HWND_TOP, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), SWP_FRAMECHANGED | SWP_NOZORDER | SWP_SHOWWINDOW); // ウィンドウ位置とサイズをフルスクリーンに設定
+	ShowWindow(hwnd, SW_MAXIMIZE); // ウィンドウを最大化
 
 	// キー入力結果を受け取る箱
 	char keys[256] = {0};
@@ -227,13 +244,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//残機
 	int lives;
 
-	
+	int numArray[3] = {};
 
-	int num = 0;
-
-	int numberArray[3] = {};
-
-
+	int hiScore = 0;
 	
 	InitGame(balls, ballCount, particles, maxParticles, missCount);
 
@@ -279,17 +292,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			if (gameTimer >= 180) {
 				gameStart = true;
 			}
-
-			numberArray[0] = num / 100;
-			num %= 100;
-
-			numberArray[1] = num / 10;
-			num %= 10;
-
-			numberArray[2] = num / 1;
-			num %= 1;
-
-
 			//ゲーム開始
 			if (gameStart == true) {
 				// 1) ボールの更新
@@ -326,7 +328,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 								SpawnExplosion(particles, maxParticles, balls[i].x, balls[i].y);
 								missCount++;
 								if (missCount >= maxMiss) {
-									num = score;
 									Novice::StopAudio(playHandle);
 									scene = SCORE; // 3回ミスで終了
 								}
@@ -346,7 +347,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 									missCount++;
 									if (missCount >= maxMiss) {
 										Novice::StopAudio(playHandle);
-										num = score;
 										scene = SCORE;
 									}
 								}
@@ -444,7 +444,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Novice::DrawSprite(0, 0, title, 1.0f, 1.0f, 0.0f, WHITE);
 			
 			score = 0;
-			num = 0;
 			break;
 		case GAME:
 			Novice::DrawSprite(0, 0, gameScene, 1.0f, 1.0f, 0.0f, WHITE);
@@ -487,24 +486,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 					20 + i * 40,   // X座標（横に並べる）
 					20,            // Y座標（固定）
 					lifeIcon,      // 残機画像
-					0.6f, 0.6f,    // 拡大率
+					1.0f, 1.0f,    // 拡大率
 					0.0f,          // 回転
 					WHITE          // 色
 				);
 			}
 
-			Novice::ScreenPrintf(1000, 30, "%d", score);
+			if (gameTimer >=0 && gameTimer <60) {
+				Novice::DrawSprite(550, 50, numGH[3], 2.0f, 2.0f, 0.0f, WHITE);
+			} else if (gameTimer >= 60 && gameTimer < 120) {
+				Novice::DrawSprite(550, 50, numGH[2], 2.0f, 2.0f, 0.0f, WHITE);
+			} else if (gameTimer >= 120 && gameTimer < 180) {
+				Novice::DrawSprite(550, 50, numGH[1], 2.0f, 2.0f, 0.0f, WHITE);
+			}
+
+			if (score <= hiScore) {
+				hiScore = score;
+			}
+
 			break;
 		case SCORE:
 			Novice::DrawSprite(0, 0, result, 1.0f, 1.0f, 0.0f, WHITE);
 
-			for (int i = 0;i < 3;++i) {
-				Novice::DrawSprite(100 + i * 71, 100, numGH[numberArray[i]], 1.0f, 1.0f, 0.0f, WHITE);
-				Novice::ScreenPrintf(100, 50, "disp by Novice::screenPrintf");
-				Novice::ScreenPrintf(350 + i * 8, 50, " %d", numberArray[i]);
-				Novice::ScreenPrintf(380 , 80, " %d", num);
-			}
+			SplitScoreToDigits(score, numArray, 3);
 
+			// 数字を描画
+			for (int i = 0; i < 3; ++i) {
+				Novice::DrawSprite(450 + i * 85, 360, numGH[numArray[i]], 2.5f, 2.5f, 0.0f, WHITE);
+			}
 			break;
 		}
 
