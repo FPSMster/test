@@ -173,6 +173,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	numGH[9] = Novice::LoadTexture("./Resources./9.png");
 
 	int gamaSceneBGM = Novice::LoadAudio("./Sound./gamaSceneBGM.mp3");
+	int getSH = Novice::LoadAudio("./Sound./get.mp3");
+	int explosionSH = Novice::LoadAudio("./Sound./bakuhatu.mp3");
 
 	srand((unsigned int)time(nullptr));
 
@@ -307,6 +309,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
                                 // 一度も掴まれていなければ爆発
                                 balls[i].exploded = true;
                                 balls[i].active = false;
+                                Novice::PlayAudio(explosionSH, false, 3);
                                 SpawnExplosion(particles, maxParticles, balls[i].x, balls[i].y);
                                 missCount++;
                                 if (missCount >= maxMiss) {
@@ -353,6 +356,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
                 // 2) マウス入力（掴む/離すの判定）
                 if (!prevMouseDown && mouseDown) {
+                    Novice::PlayAudio(getSH, false, 2);
                     for (int i = ballCount - 1; i >= 0; i--) {
                         if (!balls[i].active || balls[i].exploded || balls[i].touched) continue;
                         float dx = balls[i].x - (float)mousePosX;
@@ -494,6 +498,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
             // 重複を除いて上位3位に反映
             int idx = 0;
             int lastScore = -1;
+
             for (int i = 0; i < 4 && idx < 3; ++i) {
                 if (temp[i] != lastScore) {
                     highScores[idx++] = temp[i];
