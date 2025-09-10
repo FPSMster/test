@@ -118,16 +118,12 @@ void InitGame(Ball balls[], int ballCount, Particle particles[], int maxParticle
 		balls[i].exploded = false;
 		balls[i].active = true;
 	}
-
 	// パーティクル初期化
 	for (int i = 0; i < maxParticles; i++) {
 		particles[i].active = false;
 	}
-
 	// ミス回数リセット
 	missCount = 0;
-
-
 }
 
 void SplitScoreToDigits(int score, int digits[], int maxDigits) {
@@ -136,7 +132,6 @@ void SplitScoreToDigits(int score, int digits[], int maxDigits) {
 		score /= 10;
 	}
 }
-
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -164,7 +159,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	whiteBallGH = Novice::LoadTexture("./Resources/whiteBomb.png");//白
 	blackBallGH = Novice::LoadTexture("./Resources/blackBomb.png");//黒
 	int lifeIcon = Novice::LoadTexture("./Resources/hp.png");//残機
-	
+
 	int numGH[10] = {};
 	numGH[0] = Novice::LoadTexture("./Resources./0.png");
 	numGH[1] = Novice::LoadTexture("./Resources./1.png");
@@ -182,7 +177,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srand((unsigned int)time(nullptr));
 
 	// ボール数
-	const int ballCount = 200;
+	const int ballCount = 100;
 	Ball balls[ballCount];
 
 	// パーティクル配列（十分な数）
@@ -215,7 +210,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		balls[i].exploded = false;
 		balls[i].active = true;
 	}
-
 	// マウス
 	int mousePosX = 0;
 	int mousePosY = 0;
@@ -223,13 +217,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	int prevMouseY = 0;
 	bool prevMouseDown = false;
 	int mouseRadius = 15;
-
 	// 掴んでいるボールのインデックス
 	int grabbingIndex = -1;
-
 	// 物理パラメータ
 	const float gravity = 0.05f; // パーティクルや慣性に作用する重力っぽい値
-
 	// --- シーン管理用変数 ---
 	Scene scene = TITLE;
 	int score = 0;
@@ -238,17 +229,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// ゲーム開始時のカウントダウン用
 	int gameTimer = 0;
 	bool gameStart = false;
-
 	int playHandle = 1;
-
 	//残機
 	int lives;
-
 	int numArray[3] = {};
-
 	int hiScore = 0;
-	
+	// --- グローバル変数 ---
+	int highScores[3] = { 0, 0, 0 }; // 上位3位のスコア
 	InitGame(balls, ballCount, particles, maxParticles, missCount);
+
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -259,269 +248,286 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		memcpy(preKeys, keys, 256);
 		Novice::GetHitKeyStateAll(keys);
 
-		///
-		/// ↓更新処理ここから
-		///
-		 // マウス情報
-		Novice::GetMousePosition(&mousePosX, &mousePosY);
-		bool mouseDown = Novice::IsPressMouse(0) != 0;
-		Novice::SetMouseCursorVisibility(0);
+        // マウス情報
+        Novice::GetMousePosition(&mousePosX, &mousePosY);
+        bool mouseDown = Novice::IsPressMouse(0) != 0;
+        Novice::SetMouseCursorVisibility(0);
 
-		// --- 更新処理 ------------------------------------------------
-		
-		
+        // --- 更新処理 ------------------------------------------------
 
-		switch (scene)
-		{
-			
+        switch (scene)
+        {
+        case TITLE:///////////////////////////////////////////////////////////////////
+            if (keys[DIK_SPACE] && preKeys[DIK_SPACE] == 0) {
+                InitGame(balls, ballCount, particles, maxParticles, missCount);
+                gameTimer = 0;
+                gameStart = false;
+                scene = GAME;
+                if (!Novice::IsPlayingAudio(playHandle)) {
+                    playHandle = Novice::PlayAudio(gamaSceneBGM, true, 1);
+                }
+            }
+            break;
+        case GAME:///////////////////////////////////////////////////////////////////
+            //ゲーム開始タイマー（３秒）
+            gameTimer++;
+            if (gameTimer >= 180) {
+                gameStart = true;
+            }
+            //ゲーム開始
+            if (gameStart == true) {
+                // 1) ボールの更新
+                for (int i = 0; i < ballCount; i++) {
+                    if (!balls[i].active) continue;
 
-		case TITLE:///////////////////////////////////////////////////////////////////
-			if (keys[DIK_SPACE] && preKeys[DIK_SPACE] == 0) {
-				InitGame(balls, ballCount, particles, maxParticles, missCount);
-				gameTimer = 0;
-				gameStart = false;
-				scene = GAME;
-				if (!Novice::IsPlayingAudio(playHandle)) {
-					playHandle = Novice::PlayAudio(gamaSceneBGM, true, 1);
-				}
-			}
-			break;
-		case GAME:///////////////////////////////////////////////////////////////////
-			//ゲーム開始タイマー（３秒）
-			gameTimer++;
-			if (gameTimer >= 180) {
-				gameStart = true;
-			}
-			//ゲーム開始
-			if (gameStart == true) {
-				// 1) ボールの更新
-				for (int i = 0; i < ballCount; i++) {
-					if (!balls[i].active) continue;
+                    // 掴まれているボールはマウスに追従
+                    if (balls[i].beingHeld) {
+                        float dx = (float)(mousePosX - prevMouseX);
+                        float dy = (float)(mousePosY - prevMouseY);
+                        balls[i].vx = dx;
+                        balls[i].vy = dy;
 
-					// 掴まれているボールはマウスに追従
-					if (balls[i].beingHeld) {
-						float dx = (float)(mousePosX - prevMouseX);
-						float dy = (float)(mousePosY - prevMouseY);
-						balls[i].vx = dx;
-						balls[i].vy = dy;
+                        balls[i].x = (float)mousePosX;
+                        balls[i].y = (float)mousePosY;
+                    } else if (!balls[i].isFixed && !balls[i].exploded) {
 
-						balls[i].x = (float)mousePosX;
-						balls[i].y = (float)mousePosY;
-					} else if (!balls[i].isFixed && !balls[i].exploded) {
+                        balls[i].vy += gravity * 0.16f;
+                        balls[i].y += balls[i].speed + balls[i].vy;
+                        balls[i].x += balls[i].vx;
 
-						balls[i].vy += gravity * 0.16f;
-						balls[i].y += balls[i].speed + balls[i].vy;
-						balls[i].x += balls[i].vx;
+                        // 減速（摩擦）
+                        balls[i].vx *= 0.98f;
+                        balls[i].vy *= 0.99f;
 
-						// 減速（摩擦）
-						balls[i].vx *= 0.98f;
-						balls[i].vy *= 0.99f;
+                        // 地面に着いたら判定
+                        if (balls[i].y + balls[i].radius >= SCREEN_H) {
+                            balls[i].y = SCREEN_H - balls[i].radius;
 
-						// 地面に着いたら判定
-						if (balls[i].y + balls[i].radius >= SCREEN_H) {
-							balls[i].y = SCREEN_H - balls[i].radius;
+                            if (!balls[i].touched) {
+                                // 一度も掴まれていなければ爆発
+                                balls[i].exploded = true;
+                                balls[i].active = false;
+                                SpawnExplosion(particles, maxParticles, balls[i].x, balls[i].y);
+                                missCount++;
+                                if (missCount >= maxMiss) {
+                                    Novice::StopAudio(playHandle);
+                                    scene = SCORE; // 3回ミスで終了
+                                }
+                            } else {
+                                // --- 仕分け判定 ---
+                                bool correct = false;
+                                if (balls[i].color == WHITE && balls[i].x > SCREEN_W / 2) {
+                                    correct = true; // 白は右
+                                }
+                                if (balls[i].color == BLACK && balls[i].x < SCREEN_W / 2) {
+                                    correct = true; // 黒は左
+                                }
 
-							if (!balls[i].touched) {
-								// 一度も掴まれていなければ爆発
-								balls[i].exploded = true;
-								balls[i].active = false;
-								SpawnExplosion(particles, maxParticles, balls[i].x, balls[i].y);
-								missCount++;
-								if (missCount >= maxMiss) {
-									Novice::StopAudio(playHandle);
-									scene = SCORE; // 3回ミスで終了
-								}
-							} else {
-								// --- 仕分け判定 ---
-								bool correct = false;
-								if (balls[i].color == WHITE && balls[i].x > SCREEN_W / 2) {
-									correct = true; // 白は右
-								}
-								if (balls[i].color == BLACK && balls[i].x < SCREEN_W / 2) {
-									correct = true; // 黒は左
-								}
+                                if (correct) {
+                                    score++; // 正解ならスコア加算
+                                } else {
+                                    missCount++;
+                                    if (missCount >= maxMiss) {
+                                        Novice::StopAudio(playHandle);
+                                        scene = SCORE;
+                                    }
+                                }
 
-								if (correct) {
-									score++; // 正解ならスコア加算
-								} else {
-									missCount++;
-									if (missCount >= maxMiss) {
-										Novice::StopAudio(playHandle);
-										scene = SCORE;
-									}
-								}
+                                // 正解でも不正解でも床で止める
+                                balls[i].isFixed = true;
+                                balls[i].vx = balls[i].vy = 0.0f;
+                            }
+                        }
 
-								// 正解でも不正解でも床で止める
-								balls[i].isFixed = true;
-								balls[i].vx = balls[i].vy = 0.0f;
-							}
-						}
+                        // 壁の当たり判定（左右）
+                        if (balls[i].x - balls[i].radius < 0.0f) {
+                            balls[i].x = balls[i].radius;
+                            balls[i].vx = -balls[i].vx * 0.5f;
+                        }
+                        if (balls[i].x + balls[i].radius > SCREEN_W) {
+                            balls[i].x = SCREEN_W - balls[i].radius;
+                            balls[i].vx = -balls[i].vx * 0.5f;
+                        }
+                    }
+                }
 
-						// 壁の当たり判定（左右）
-						if (balls[i].x - balls[i].radius < 0.0f) {
-							balls[i].x = balls[i].radius;
-							balls[i].vx = -balls[i].vx * 0.5f;
-						}
-						if (balls[i].x + balls[i].radius > SCREEN_W) {
-							balls[i].x = SCREEN_W - balls[i].radius;
-							balls[i].vx = -balls[i].vx * 0.5f;
-						}
-					}
-				}
+                // 2) マウス入力（掴む/離すの判定）
+                if (!prevMouseDown && mouseDown) {
+                    for (int i = ballCount - 1; i >= 0; i--) {
+                        if (!balls[i].active || balls[i].exploded || balls[i].touched) continue;
+                        float dx = balls[i].x - (float)mousePosX;
+                        float dy = balls[i].y - (float)mousePosY;
+                        float dist2 = dx * dx + dy * dy;
+                        if (dist2 <= (balls[i].radius + mouseRadius) * (balls[i].radius + mouseRadius)) {
+                            grabbingIndex = i;
+                            balls[i].beingHeld = true;
+                            balls[i].touched = true;
+                            prevMouseX = mousePosX;
+                            prevMouseY = mousePosY;
+                            break;
+                        }
+                    }
+                } else if (prevMouseDown && !mouseDown) {
+                    if (grabbingIndex != -1) {
+                        Ball& b = balls[grabbingIndex];
+                        b.beingHeld = false;
+                        b.vx *= 1.2f;
+                        b.vy *= 1.2f;
+                        grabbingIndex = -1;
+                    }
+                }
 
-				// 2) マウス入力（掴む/離すの判定）
-				if (!prevMouseDown && mouseDown) {
-					for (int i = ballCount - 1; i >= 0; i--) {
-						if (!balls[i].active || balls[i].exploded || balls[i].touched) continue;
-						float dx = balls[i].x - (float)mousePosX;
-						float dy = balls[i].y - (float)mousePosY;
-						float dist2 = dx * dx + dy * dy;
-						if (dist2 <= (balls[i].radius + mouseRadius) * (balls[i].radius + mouseRadius)) {
-							grabbingIndex = i;
-							balls[i].beingHeld = true;
-							balls[i].touched = true;
-							prevMouseX = mousePosX;
-							prevMouseY = mousePosY;
-							break;
-						}
-					}
-				} else if (prevMouseDown && !mouseDown) {
-					if (grabbingIndex != -1) {
-						Ball& b = balls[grabbingIndex];
-						b.beingHeld = false;
-						b.vx *= 1.2f;
-						b.vy *= 1.2f;
-						grabbingIndex = -1;
-					}
-				}
+                // 3) パーティクル更新
+                for (int i = 0; i < maxParticles; i++) {
+                    if (!particles[i].active) continue;
+                    // 重力
+                    particles[i].vy += gravity;
+                    particles[i].x += particles[i].vx;
+                    particles[i].y += particles[i].vy;
 
-				// 3) パーティクル更新
-				for (int i = 0; i < maxParticles; i++) {
-					if (!particles[i].active) continue;
-					// 重力
-					particles[i].vy += gravity;
-					particles[i].x += particles[i].vx;
-					particles[i].y += particles[i].vy;
+                    // 徐々に減速させる
+                    particles[i].vx *= 0.995f;
+                    particles[i].vy *= 0.995f;
 
-					// 徐々に減速させる
-					particles[i].vx *= 0.995f;
-					particles[i].vy *= 0.995f;
+                    // 寿命を減らす
+                    particles[i].life--;
+                    if (particles[i].life <= 0) {
+                        particles[i].active = false;
+                    }
 
-					// 寿命を減らす
-					particles[i].life--;
-					if (particles[i].life <= 0) {
-						particles[i].active = false;
-					}
+                    // 床に当たったら跳ねて減速させる（簡易）
+                    if (particles[i].y + particles[i].size >= SCREEN_H) {
+                        particles[i].y = SCREEN_H - particles[i].size;
+                        particles[i].vy *= -0.4f;
+                        particles[i].vx *= 0.6f;
+                    }
+                }
+            }
+            break;
+        case SCORE:///////////////////////////////////////////////////////////////////
+            if (keys[DIK_SPACE] && preKeys[DIK_SPACE] == 0) {
+                // 初期化してタイトルに戻る
+                InitGame(balls, ballCount, particles, maxParticles, missCount);
+                scene = TITLE;
+            }
+        }
 
-					// 床に当たったら跳ねて減速させる（簡易）
-					if (particles[i].y + particles[i].size >= SCREEN_H) {
-						particles[i].y = SCREEN_H - particles[i].size;
-						particles[i].vy *= -0.4f;
-						particles[i].vx *= 0.6f;
-					}
-				}
-			}
-			break;
-		case SCORE:///////////////////////////////////////////////////////////////////
-			if (keys[DIK_SPACE] && preKeys[DIK_SPACE] == 0) {
-				// 初期化してタイトルに戻る
-				InitGame(balls, ballCount, particles, maxParticles, missCount);
-				scene = TITLE;
-			}
-		}
 
-		///
-		/// ↑更新処理ここまで
-		///
+        // --- 更新処理 ------------------------------------------------
 
-		///
-		/// ↓描画処理ここから
-		///
-		
-		switch (scene)
-		{
-		case TITLE:
-			Novice::DrawSprite(0, 0, title, 1.0f, 1.0f, 0.0f, WHITE);
-			
-			score = 0;
-			break;
-		case GAME:
-			Novice::DrawSprite(0, 0, gameScene, 1.0f, 1.0f, 0.0f, WHITE);
-			// 境界線（任意）
-			Novice::DrawLine(SCREEN_W / 2, 0, SCREEN_W / 2, SCREEN_H, RED);
 
-			for (int i = 0; i < maxParticles; i++) {
-				if (!particles[i].active) continue;
-				float t = particles[i].life / (float)particles[i].lifeMax;
-				int drawSize = (int)std::max(1.0f, particles[i].size * t);
-				Novice::DrawEllipse((int)particles[i].x, (int)particles[i].y,
-					drawSize, drawSize, 0.0f, particles[i].color, kFillModeSolid);
-			}
+        // --- 描画処理 ------------------------------------------------
 
-			// ボールを描画
-			for (int i = 0; i < ballCount; i++) {
-				// ボール描画
-				if (balls[i].active) {
-					Novice::DrawSprite(
-						int(balls[i].x - balls[i].radius), // 左上X
-						int(balls[i].y - balls[i].radius), // 左上Y
-						balls[i].image,
-						1.0f, 1.0f, 0.0f, WHITE
-					);
-				}
-			}
+        switch (scene)
+        {
+        case TITLE:
+            Novice::DrawSprite(0, 0, title, 1.0f, 1.0f, 0.0f, WHITE);
 
-			// 手の描画
-			if (mouseDown) {
-				Novice::DrawSprite(mousePosX - mouseRadius, mousePosY - mouseRadius,
-					closeHand, 1.0f, 1.0f, 0.0f, WHITE);
-			} else {
-				Novice::DrawSprite(mousePosX - mouseRadius, mousePosY - mouseRadius,
-					openHand, 1.0f, 1.0f, 0.0f, WHITE);
-			}
+            score = 0;
+            break;
+        case GAME:
+            Novice::DrawSprite(0, 0, gameScene, 1.0f, 1.0f, 0.0f, WHITE);
+            // 境界線（任意）
+            Novice::DrawLine(SCREEN_W / 2, 0, SCREEN_W / 2, SCREEN_H, RED);
 
-			lives = maxMiss - missCount;
-			for (int i = 0; i < lives; i++) {
-				Novice::DrawSprite(
-					20 + i * 40,   // X座標（横に並べる）
-					20,            // Y座標（固定）
-					lifeIcon,      // 残機画像
-					1.0f, 1.0f,    // 拡大率
-					0.0f,          // 回転
-					WHITE          // 色
-				);
-			}
+            for (int i = 0; i < maxParticles; i++) {
+                if (!particles[i].active) continue;
+                float t = particles[i].life / (float)particles[i].lifeMax;
+                int drawSize = (int)std::max(1.0f, particles[i].size * t);
+                Novice::DrawEllipse((int)particles[i].x, (int)particles[i].y,
+                    drawSize, drawSize, 0.0f, particles[i].color, kFillModeSolid);
+            }
 
-			if (gameTimer >=0 && gameTimer <60) {
-				Novice::DrawSprite(570, 50, numGH[3], 2.0f, 2.0f, 0.0f, WHITE);
-			} else if (gameTimer >= 60 && gameTimer < 120) {
-				Novice::DrawSprite(570, 50, numGH[2], 2.0f, 2.0f, 0.0f, WHITE);
-			} else if (gameTimer >= 120 && gameTimer < 180) {
-				Novice::DrawSprite(570, 50, numGH[1], 2.0f, 2.0f, 0.0f, WHITE);
-			}
+            // ボールを描画
+            for (int i = 0; i < ballCount; i++) {
+                // ボール描画
+                if (balls[i].active) {
+                    Novice::DrawSprite(
+                        int(balls[i].x - balls[i].radius), // 左上X
+                        int(balls[i].y - balls[i].radius), // 左上Y
+                        balls[i].image,
+                        1.0f, 1.0f, 0.0f, WHITE
+                    );
+                }
+            }
 
-			if (score <= hiScore) {
-				hiScore = score;
-			}
+            // 手の描画
+            if (mouseDown) {
+                Novice::DrawSprite(mousePosX - mouseRadius, mousePosY - mouseRadius,
+                    closeHand, 1.0f, 1.0f, 0.0f, WHITE);
+            } else {
+                Novice::DrawSprite(mousePosX - mouseRadius, mousePosY - mouseRadius,
+                    openHand, 1.0f, 1.0f, 0.0f, WHITE);
+            }
 
-			break;
-		case SCORE:
-			Novice::DrawSprite(0, 0, result, 1.0f, 1.0f, 0.0f, WHITE);
+            lives = maxMiss - missCount;
+            for (int i = 0; i < lives; i++) {
+                Novice::DrawSprite(
+                    20 + i * 40,   // X座標（横に並べる）
+                    20,            // Y座標（固定）
+                    lifeIcon,      // 残機画像
+                    1.0f, 1.0f,    // 拡大率
+                    0.0f,          // 回転
+                    WHITE          // 色
+                );
+            }
 
-			SplitScoreToDigits(score, numArray, 3);
+            if (gameTimer >= 0 && gameTimer < 60) {
+                Novice::DrawSprite(570, 50, numGH[3], 2.0f, 2.0f, 0.0f, WHITE);
+            } else if (gameTimer >= 60 && gameTimer < 120) {
+                Novice::DrawSprite(570, 50, numGH[2], 2.0f, 2.0f, 0.0f, WHITE);
+            } else if (gameTimer >= 120 && gameTimer < 180) {
+                Novice::DrawSprite(570, 50, numGH[1], 2.0f, 2.0f, 0.0f, WHITE);
+            }
 
-			// 数字を描画
-			for (int i = 0; i < 3; ++i) {
-				Novice::DrawSprite(450 + i * 85, 360, numGH[numArray[i]], 2.5f, 2.5f, 0.0f, WHITE);
-			}
-			break;
-		}
+            if (score <= hiScore) {
+                hiScore = score;
+            }
 
-		
+            break;
+        case SCORE:
+        {
+            int temp[4] = { highScores[0], highScores[1], highScores[2], score };
 
-		///
-		/// ↑描画処理ここまで
-		///
+            std::sort(temp, temp + 4, std::greater<int>());
+
+            // 重複を除いて上位3位に反映
+            int idx = 0;
+            int lastScore = -1;
+            for (int i = 0; i < 4 && idx < 3; ++i) {
+                if (temp[i] != lastScore) {
+                    highScores[idx++] = temp[i];
+                    lastScore = temp[i];
+                }
+            }
+
+            // 空いた順位は0にしておく
+            for (; idx < 3; ++idx) {
+                highScores[idx] = 0;
+            }
+
+            Novice::DrawSprite(0, 0, result, 1.0f, 1.0f, 0.0f, WHITE);
+
+            // 現スコアを描画
+            SplitScoreToDigits(score, numArray, 3);
+            for (int i = 0; i < 3; ++i) {
+                Novice::DrawSprite(450 + i * 85, 360, numGH[numArray[i]], 2.5f, 2.5f, 0.0f, WHITE);
+            }
+
+            // 左側にランキング表示
+            for (int rank = 0; rank < 3; ++rank) {
+                if (highScores[rank] == 0) continue; // 空白なら描画しない
+                int digits[3];
+                SplitScoreToDigits(highScores[rank], digits, 3);
+                for (int i = 0; i < 3; ++i) {
+                    Novice::DrawSprite(70 + i * 45, 310 + rank * 75, numGH[digits[i]], 1.2f, 1.2f, 0.0f, WHITE);
+                }
+            }
+        }
+        break;
+        }
+
+        // --- 描画処理 ------------------------------------------------
 
 		  // マウスの前フレーム情報を保持
 		prevMouseX = mousePosX;
