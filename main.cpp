@@ -182,7 +182,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srand((unsigned int)time(nullptr));
 
 	// ボール数
-	const int ballCount = 100;
+	const int ballCount = 200;
 	Ball balls[ballCount];
 
 	// パーティクル配列（十分な数）
@@ -493,11 +493,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			}
 
 			if (gameTimer >=0 && gameTimer <60) {
-				Novice::DrawSprite(550, 50, numGH[3], 2.0f, 2.0f, 0.0f, WHITE);
+				Novice::DrawSprite(570, 50, numGH[3], 2.0f, 2.0f, 0.0f, WHITE);
 			} else if (gameTimer >= 60 && gameTimer < 120) {
-				Novice::DrawSprite(550, 50, numGH[2], 2.0f, 2.0f, 0.0f, WHITE);
+				Novice::DrawSprite(570, 50, numGH[2], 2.0f, 2.0f, 0.0f, WHITE);
 			} else if (gameTimer >= 120 && gameTimer < 180) {
-				Novice::DrawSprite(550, 50, numGH[1], 2.0f, 2.0f, 0.0f, WHITE);
+				Novice::DrawSprite(570, 50, numGH[1], 2.0f, 2.0f, 0.0f, WHITE);
 			}
 
 			if (score <= hiScore) {
